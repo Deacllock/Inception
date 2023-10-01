@@ -1,0 +1,77 @@
+version: '3'
+
+services:
+  mariadb:
+    container_name: mariadb
+    image: mariadb:latest
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - docker-network
+    environment: 
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+    restart: unless-stopped
+
+  wordpress:
+    container_name: wordpress
+    image: wordpress
+    build:
+      context: requirements/wordpress/
+    depends_on:
+      - mariadb
+    volumes:
+      - wordpress_data:/var/www/html
+    networks:
+      - docker-network
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME}
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_USER: ${MARIADB_USER}
+      WORDPRESS_DB_PASSWORD: ${MARIADB_PASSWORD}
+      WORDPRESS_DB_NAME: ${MARIADB_DATABASE}
+      WORDPRESS_TITLE: ${WORDPRESS_TITLE}
+      WORDPRESS_ADMIN_LOGIN: ${WORDPRESS_ADMIN_LOGIN}
+      WORDPRESS_ADMIN_PASSWORD: ${WORDPRESS_ADMIN_PASSWORD}
+      WORDPRESS_ADMIN_EMAIL: ${WORDPRESS_ADMIN_EMAIL}
+      WORDPRESS_USER_LOGIN: ${WORDPRESS_USER_LOGIN}
+      WORDPRESS_USER_PASSWORD: ${WORDPRESS_USER_PASSWORD}
+      WORDPRESS_USER_EMAIL: ${WORDPRESS_USER_EMAIL}
+    restart: unless-stopped
+
+  nginx:
+    container_name: nginx
+    image: nginx
+    build:
+      context: requirements/nginx/
+    depends_on:
+      - wordpress
+    volumes:
+      - wordpress_data:/var/www/html
+      - ${CERTIFICATE}:/etc/nginx/ssl/
+    ports: 
+      - "443:443"
+    networks:
+      - docker-network
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME}
+    restart: unless-stopped
+
+networks:
+  docker-network:
+
+volumes:
+  db_data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ${STORAGE_ROOT}/db_data
+  wordpress_data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ${STORAGE_ROOT}/wordpress_data
